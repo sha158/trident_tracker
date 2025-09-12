@@ -1,0 +1,1 @@
+i want to create a package where on user arguement the maps are going to open , first map is flutter_map and second map is flutter_osm_plugin map , should show the current location , also mention what is required for configuration to make the app work

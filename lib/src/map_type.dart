@@ -1,0 +1,4 @@
+enum MapType {
+  flutterMap,
+  osmPlugin,
+}
