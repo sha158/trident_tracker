@@ -1,0 +1,23 @@
+name: trident_tracker_example
+description: "Example app for TridentTracker package"
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.7.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  trident_tracker:
+    path: ../
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

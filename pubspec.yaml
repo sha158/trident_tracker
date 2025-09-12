@@ -1,7 +1,18 @@
 name: trident_tracker
 description: "A Flutter package for displaying maps with current location using flutter_map or flutter_osm_plugin."
 version: 0.0.1
-homepage:
+homepage: https://github.com/yourusername/trident_tracker
+repository: https://github.com/yourusername/trident_tracker
+issue_tracker: https://github.com/yourusername/trident_tracker/issues
+documentation: https://github.com/yourusername/trident_tracker#readme
+
+topics:
+  - maps
+  - location
+  - flutter-map
+  - osm
+  - gps
+  - tracking
 
 environment:
   sdk: ^3.7.2

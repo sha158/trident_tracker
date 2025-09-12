@@ -6,13 +6,57 @@ import 'package:latlong2/latlong.dart';
 import 'map_type.dart';
 import 'location_service.dart';
 
+/// A widget that displays a map using either flutter_map or flutter_osm_plugin.
+/// 
+/// The [TridentTracker] widget provides a unified interface for displaying maps
+/// with current location support. Users can choose between two map implementations
+/// based on their needs.
+/// 
+/// Example:
+/// ```dart
+/// TridentTracker(
+///   mapType: MapType.flutterMap,
+///   showCurrentLocation: true,
+/// )
+/// ```
 class TridentTracker extends StatefulWidget {
+  /// The type of map to display.
+  /// 
+  /// Choose between [MapType.flutterMap] for OpenStreetMap integration
+  /// or [MapType.osmPlugin] for OSM plugin implementation.
   final MapType mapType;
+  
+  /// The initial zoom level for the map.
+  /// 
+  /// Defaults to 15.0 if not specified.
   final double? initialZoom;
+  
+  /// The initial center position for the map.
+  /// 
+  /// If not specified and [showCurrentLocation] is true, the map will
+  /// center on the user's current location. Otherwise, defaults to
+  /// San Francisco coordinates.
   final LatLng? initialCenter;
+  
+  /// Whether to show and track the user's current location.
+  /// 
+  /// When true, the widget will request location permissions and
+  /// display the user's current position on the map.
   final bool showCurrentLocation;
+  
+  /// Callback function called when location permission is denied.
+  /// 
+  /// This allows the parent widget to handle permission denial
+  /// gracefully, such as showing a user-friendly message.
   final VoidCallback? onLocationPermissionDenied;
 
+  /// Creates a [TridentTracker] widget.
+  /// 
+  /// The [mapType] parameter is required and determines which map
+  /// implementation to use.
+  /// 
+  /// Other parameters are optional and allow customization of the
+  /// map's initial state and behavior.
   const TridentTracker({
     super.key,
     required this.mapType,
@@ -63,32 +107,53 @@ class _TridentTrackerState extends State<TridentTracker> {
     try {
       final position = await LocationService.getCurrentLocation();
       if (position != null) {
+        if (!mounted) return;
+        
         setState(() {
           _currentLocation = LatLng(position.latitude, position.longitude);
           _isLoading = false;
         });
-        
 
-        if (widget.mapType == MapType.osmPlugin) {
-          await _osmController.moveTo(
-            osm.GeoPoint(
-              latitude: position.latitude,
-              longitude: position.longitude,
-            ),
-          );
+        // Only move OSM map if widget is still mounted
+        if (widget.mapType == MapType.osmPlugin && mounted) {
+          try {
+            await _osmController.moveTo(
+              osm.GeoPoint(
+                latitude: position.latitude,
+                longitude: position.longitude,
+              ),
+            );
+          } catch (osmError) {
+            // OSM controller error is non-critical, log but don't fail
+            debugPrint('OSM controller error: $osmError');
+          }
         }
       } else {
+        if (!mounted) return;
         setState(() {
-          _errorMessage = 'Unable to get current location';
+          _errorMessage = 'Unable to get current location. Please check your location settings and permissions.';
           _isLoading = false;
         });
         widget.onLocationPermissionDenied?.call();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'Error getting location: $e';
+        _errorMessage = _getErrorMessage(e);
         _isLoading = false;
       });
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error.toString().contains('permission')) {
+      return 'Location permission denied. Please enable location access in your device settings.';
+    } else if (error.toString().contains('service')) {
+      return 'Location services are disabled. Please enable location services in your device settings.';
+    } else if (error.toString().contains('network')) {
+      return 'Network error occurred while loading the map. Please check your internet connection.';
+    } else {
+      return 'An error occurred while getting your location. Please try again.';
     }
   }
 
