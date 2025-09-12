@@ -4,10 +4,11 @@ A Flutter package for displaying maps with current location using either flutter
 
 ## Features
 
-- 🗺️ Support for two map providers: flutter_map (OpenStreetMap) and flutter_osm_plugin
+- 🗺️ Support for three map providers: flutter_map (OpenStreetMap), flutter_osm_plugin, and Google Maps
 - 📍 Automatic current location detection and display
 - 🎯 Customizable initial position and zoom level
 - 🔐 Built-in location permission handling
+- 🔑 Conditional API key validation (only required for Google Maps)
 - ⚡ Easy-to-use widget with minimal configuration
 
 ## Getting started
@@ -90,6 +91,71 @@ TridentTracker(
 
 - `MapType.flutterMap`: Uses flutter_map with OpenStreetMap tiles
 - `MapType.osmPlugin`: Uses flutter_osm_plugin with interactive features
+- `MapType.googleMaps`: Uses Google Maps with official Google Maps SDK (requires API key)
+
+### Google Maps Usage
+
+```dart
+TridentTracker(
+  mapType: MapType.googleMaps,
+  googleMapsApiKey: "YOUR_API_KEY_HERE", // Required for Google Maps
+  showCurrentLocation: true,
+)
+```
+
+**Important:** API key is only required when using `MapType.googleMaps`. Other map types work without any API key.
+
+## Google Maps Configuration
+
+### 1. Get API Key
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - Maps SDK for Android
+   - Maps SDK for iOS
+4. Create an API key
+5. Restrict the API key to your app's package name/bundle ID
+
+### 2. Android Setup
+Add to `android/app/src/main/AndroidManifest.xml` inside the `<application>` tag:
+```xml
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="YOUR_API_KEY_HERE"/>
+```
+
+### 3. iOS Setup
+Add to `ios/Runner/AppDelegate.swift`:
+```swift
+import UIKit
+import Flutter
+import GoogleMaps
+
+@UIApplicationMain
+@objc class AppDelegate: FlutterAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    GMSServices.provideAPIKey("YOUR_API_KEY_HERE")
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
+```
+
+### 4. Environment-Based API Key (Recommended)
+```dart
+TridentTracker(
+  mapType: MapType.googleMaps,
+  googleMapsApiKey: const String.fromEnvironment('GOOGLE_MAPS_API_KEY'),
+)
+```
+
+Then run your app with:
+```bash
+flutter run --dart-define=GOOGLE_MAPS_API_KEY=your_api_key_here
+```
 
 ## Required Permissions
 

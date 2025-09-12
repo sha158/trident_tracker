@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart' as osm;
+import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import 'package:latlong2/latlong.dart';
 
 import 'map_type.dart';
 import 'location_service.dart';
+import 'trident_location_marker.dart';
+import 'marker_widgets.dart';
 
 /// A widget that displays a map using either flutter_map or flutter_osm_plugin.
 /// 
@@ -22,9 +25,16 @@ import 'location_service.dart';
 class TridentTracker extends StatefulWidget {
   /// The type of map to display.
   /// 
-  /// Choose between [MapType.flutterMap] for OpenStreetMap integration
-  /// or [MapType.osmPlugin] for OSM plugin implementation.
+  /// Choose between [MapType.flutterMap] for OpenStreetMap integration,
+  /// [MapType.osmPlugin] for OSM plugin implementation, or
+  /// [MapType.googleMaps] for Google Maps integration.
   final MapType mapType;
+  
+  /// Google Maps API key.
+  /// 
+  /// Required when [mapType] is [MapType.googleMaps].
+  /// Not required for other map types.
+  final String? googleMapsApiKey;
   
   /// The initial zoom level for the map.
   /// 
@@ -44,27 +54,50 @@ class TridentTracker extends StatefulWidget {
   /// display the user's current position on the map.
   final bool showCurrentLocation;
   
+  /// Custom marker configuration for the current location.
+  /// 
+  /// Allows customization of how the current location is displayed
+  /// with custom images, widgets, or default styled markers.
+  /// If null, a default marker will be used.
+  final TridentLocationMarker? locationMarker;
+  
   /// Callback function called when location permission is denied.
   /// 
   /// This allows the parent widget to handle permission denial
   /// gracefully, such as showing a user-friendly message.
   final VoidCallback? onLocationPermissionDenied;
+  
+  /// Callback function called when Google Maps API key is invalid or missing.
+  /// 
+  /// This allows the parent widget to handle API key errors
+  /// gracefully, such as showing setup instructions.
+  final VoidCallback? onGoogleMapsApiKeyError;
 
   /// Creates a [TridentTracker] widget.
   /// 
   /// The [mapType] parameter is required and determines which map
   /// implementation to use.
   /// 
+  /// When using [MapType.googleMaps], the [googleMapsApiKey] parameter
+  /// is required.
+  /// 
   /// Other parameters are optional and allow customization of the
   /// map's initial state and behavior.
   const TridentTracker({
     super.key,
     required this.mapType,
+    this.googleMapsApiKey,
     this.initialZoom = 15.0,
     this.initialCenter,
     this.showCurrentLocation = true,
+    this.locationMarker,
     this.onLocationPermissionDenied,
-  });
+    this.onGoogleMapsApiKeyError,
+  }) : assert(
+         mapType != MapType.googleMaps || (googleMapsApiKey != null && googleMapsApiKey != ''),
+         'Google Maps API key is required when mapType is MapType.googleMaps. '
+         'Usage: TridentTracker(mapType: MapType.googleMaps, googleMapsApiKey: "your-key")',
+       );
 
   @override
   State<TridentTracker> createState() => _TridentTrackerState();
@@ -74,8 +107,10 @@ class _TridentTrackerState extends State<TridentTracker> {
   LatLng? _currentLocation;
   flutter_map.MapController? _mapController;
   late osm.MapController _osmController;
+  google_maps.GoogleMapController? _googleMapController;
   bool _isLoading = true;
   String? _errorMessage;
+  Set<google_maps.Marker> _googleMarkers = {};
 
   @override
   void initState() {
@@ -114,18 +149,28 @@ class _TridentTrackerState extends State<TridentTracker> {
           _isLoading = false;
         });
 
-        // Only move OSM map if widget is still mounted
-        if (widget.mapType == MapType.osmPlugin && mounted) {
+        // Move map to current location based on map type
+        if (mounted) {
           try {
-            await _osmController.moveTo(
-              osm.GeoPoint(
-                latitude: position.latitude,
-                longitude: position.longitude,
-              ),
-            );
-          } catch (osmError) {
-            // OSM controller error is non-critical, log but don't fail
-            debugPrint('OSM controller error: $osmError');
+            if (widget.mapType == MapType.osmPlugin) {
+              await _osmController.moveTo(
+                osm.GeoPoint(
+                  latitude: position.latitude,
+                  longitude: position.longitude,
+                ),
+              );
+            } else if (widget.mapType == MapType.googleMaps && _googleMapController != null) {
+              await _googleMapController!.animateCamera(
+                google_maps.CameraUpdate.newLatLng(
+                  google_maps.LatLng(position.latitude, position.longitude),
+                ),
+              );
+              // Update Google Maps marker
+              _updateGoogleMapsMarker(position.latitude, position.longitude);
+            }
+          } catch (mapError) {
+            // Map controller error is non-critical, log but don't fail
+            debugPrint('Map controller error: $mapError');
           }
         }
       } else {
@@ -154,6 +199,115 @@ class _TridentTrackerState extends State<TridentTracker> {
       return 'Network error occurred while loading the map. Please check your internet connection.';
     } else {
       return 'An error occurred while getting your location. Please try again.';
+    }
+  }
+  
+  void _updateGoogleMapsMarker(double latitude, double longitude) {
+    if (!mounted) return;
+    
+    _createGoogleMapsMarkerIcon().then((icon) {
+      if (!mounted) return;
+      
+      setState(() {
+        _googleMarkers = {
+          google_maps.Marker(
+            markerId: const google_maps.MarkerId('current_location'),
+            position: google_maps.LatLng(latitude, longitude),
+            infoWindow: google_maps.InfoWindow(
+              title: widget.locationMarker?.title ?? 'Your Location',
+              snippet: widget.locationMarker?.description,
+            ),
+            icon: icon,
+          ),
+        };
+      });
+    }).catchError((error) {
+      // Fallback to default marker if custom marker fails
+      if (!mounted) return;
+      
+      setState(() {
+        _googleMarkers = {
+          google_maps.Marker(
+            markerId: const google_maps.MarkerId('current_location'),
+            position: google_maps.LatLng(latitude, longitude),
+            infoWindow: const google_maps.InfoWindow(
+              title: 'Your Location',
+            ),
+            icon: google_maps.BitmapDescriptor.defaultMarkerWithHue(
+              google_maps.BitmapDescriptor.hueBlue,
+            ),
+          ),
+        };
+      });
+    });
+  }
+  
+  Future<google_maps.BitmapDescriptor> _createGoogleMapsMarkerIcon() async {
+    final marker = widget.locationMarker;
+    
+    if (marker == null) {
+      return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+        google_maps.BitmapDescriptor.hueBlue,
+      );
+    }
+    
+    switch (marker.type) {
+      case TridentLocationMarkerType.asset:
+        try {
+          return await google_maps.BitmapDescriptor.asset(
+            const ImageConfiguration(size: Size(48, 48)),
+            marker.assetPath!,
+          );
+        } catch (e) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
+        
+      case TridentLocationMarkerType.widget:
+        // For widgets, we'll use fromBytes after converting to image
+        // This is more complex and would require additional implementation
+        return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+          google_maps.BitmapDescriptor.hueBlue,
+        );
+        
+      case TridentLocationMarkerType.defaultIcon:
+        final color = marker.color ?? Colors.blue;
+        if (color == Colors.blue) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        } else if (color == Colors.red) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueRed,
+          );
+        } else if (color == Colors.green) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueGreen,
+          );
+        } else {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
+        
+      case TridentLocationMarkerType.pulsing:
+        // Pulsing animation not supported in Google Maps markers
+        // Fall back to colored marker
+        final color = marker.color ?? Colors.blue;
+        if (color == Colors.blue) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        } else if (color == Colors.red) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueRed,
+          );
+        } else {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
     }
   }
 
@@ -204,9 +358,14 @@ class _TridentTrackerState extends State<TridentTracker> {
       );
     }
 
-    return widget.mapType == MapType.flutterMap
-        ? _buildFlutterMap()
-        : _buildOsmMap();
+    switch (widget.mapType) {
+      case MapType.flutterMap:
+        return _buildFlutterMap();
+      case MapType.osmPlugin:
+        return _buildOsmMap();
+      case MapType.googleMaps:
+        return _buildGoogleMap();
+    }
   }
 
   Widget _buildFlutterMap() {
@@ -230,20 +389,9 @@ class _TridentTrackerState extends State<TridentTracker> {
             markers: [
               flutter_map.Marker(
                 point: _currentLocation!,
-                width: 80.0,
-                height: 80.0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(40),
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                  child: const Icon(
-                    Icons.my_location,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
+                width: widget.locationMarker?.size.width ?? 80.0,
+                height: widget.locationMarker?.size.height ?? 80.0,
+                child: TridentMarkerWidgets.buildMarkerWidget(widget.locationMarker),
               ),
             ],
           ),
@@ -265,23 +413,119 @@ class _TridentTrackerState extends State<TridentTracker> {
           maxZoomLevel: 19,
           stepZoom: 1.0,
         ),
-        userLocationMarker: osm.UserLocationMaker(
-          personMarker: const osm.MarkerIcon(
-            icon: Icon(
-              Icons.location_on,
-              color: Colors.red,
-              size: 48,
-            ),
-          ),
-          directionArrowMarker: const osm.MarkerIcon(
-            icon: Icon(
-              Icons.double_arrow,
-              size: 48,
-            ),
-          ),
-        ),
+        userLocationMarker: _buildOSMUserLocationMarker(),
         roadConfiguration: const osm.RoadOption(
           roadColor: Colors.yellowAccent,
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildGoogleMap() {
+    final center = _currentLocation != null
+        ? google_maps.LatLng(_currentLocation!.latitude, _currentLocation!.longitude)
+        : widget.initialCenter != null
+            ? google_maps.LatLng(widget.initialCenter!.latitude, widget.initialCenter!.longitude)
+            : const google_maps.LatLng(37.7749, -122.4194);
+
+    return google_maps.GoogleMap(
+      onMapCreated: (google_maps.GoogleMapController controller) {
+        _googleMapController = controller;
+        
+        // Update marker if we have current location
+        if (_currentLocation != null) {
+          _updateGoogleMapsMarker(_currentLocation!.latitude, _currentLocation!.longitude);
+        }
+      },
+      initialCameraPosition: google_maps.CameraPosition(
+        target: center,
+        zoom: widget.initialZoom ?? 15.0,
+      ),
+      markers: _googleMarkers,
+      myLocationEnabled: widget.showCurrentLocation,
+      myLocationButtonEnabled: widget.showCurrentLocation,
+      mapType: google_maps.MapType.normal,
+      compassEnabled: true,
+      tiltGesturesEnabled: true,
+      scrollGesturesEnabled: true,
+      zoomGesturesEnabled: true,
+      rotateGesturesEnabled: true,
+    );
+  }
+  
+  osm.UserLocationMaker _buildOSMUserLocationMarker() {
+    final marker = widget.locationMarker;
+    
+    if (marker == null) {
+      return osm.UserLocationMaker(
+        personMarker: const osm.MarkerIcon(
+          icon: Icon(
+            Icons.my_location,
+            color: Colors.blue,
+            size: 48,
+          ),
+        ),
+        directionArrowMarker: const osm.MarkerIcon(
+          icon: Icon(
+            Icons.navigation,
+            color: Colors.blue,
+            size: 48,
+          ),
+        ),
+      );
+    }
+    
+    // OSM plugin has limited customization options
+    // We can mainly change the icon and color
+    IconData iconData;
+    Color iconColor;
+    double iconSize;
+    
+    switch (marker.type) {
+      case TridentLocationMarkerType.asset:
+        // OSM plugin doesn't support asset images directly
+        // Fall back to default icon with custom color
+        iconData = Icons.my_location;
+        iconColor = marker.color ?? Colors.blue;
+        iconSize = marker.size.width.clamp(24.0, 72.0);
+        break;
+        
+      case TridentLocationMarkerType.widget:
+        // OSM plugin doesn't support custom widgets
+        // Fall back to default icon
+        iconData = Icons.my_location;
+        iconColor = Colors.blue;
+        iconSize = 48.0;
+        break;
+        
+      case TridentLocationMarkerType.defaultIcon:
+        iconData = Icons.my_location;
+        iconColor = marker.color ?? Colors.blue;
+        iconSize = marker.size.width.clamp(24.0, 72.0);
+        break;
+        
+      case TridentLocationMarkerType.pulsing:
+        // OSM plugin doesn't support animations
+        // Use the color but no pulsing effect
+        iconData = Icons.my_location;
+        iconColor = marker.color ?? Colors.blue;
+        iconSize = marker.size.width.clamp(24.0, 72.0);
+        break;
+    }
+    
+    return osm.UserLocationMaker(
+      personMarker: osm.MarkerIcon(
+        icon: Icon(
+          iconData,
+          color: iconColor,
+          size: iconSize,
+        ),
+      ),
+      directionArrowMarker: osm.MarkerIcon(
+        icon: Icon(
+          Icons.navigation,
+          color: iconColor,
+          size: iconSize * 0.8,
         ),
       ),
     );

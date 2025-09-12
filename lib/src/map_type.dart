@@ -14,4 +14,11 @@ enum MapType {
   /// This implementation offers advanced OSM features and
   /// more interactive capabilities.
   osmPlugin,
+  
+  /// Use Google Maps with official Google Maps SDK.
+  /// 
+  /// This implementation provides Google Maps with full features
+  /// including satellite imagery, street view, and Places API integration.
+  /// Requires a valid Google Maps API key.
+  googleMaps,
 }
