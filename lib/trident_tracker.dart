@@ -35,3 +35,4 @@ export 'src/trident_tracker_widget.dart';
 export 'src/map_type.dart';
 export 'src/location_service.dart';
 export 'src/trident_location_marker.dart';
+export 'src/trident_route_animation.dart';

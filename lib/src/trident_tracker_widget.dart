@@ -8,6 +8,7 @@ import 'map_type.dart';
 import 'location_service.dart';
 import 'trident_location_marker.dart';
 import 'marker_widgets.dart';
+import 'trident_route_animation.dart';
 
 /// A widget that displays a map using either flutter_map or flutter_osm_plugin.
 /// 
@@ -72,6 +73,12 @@ class TridentTracker extends StatefulWidget {
   /// This allows the parent widget to handle API key errors
   /// gracefully, such as showing setup instructions.
   final VoidCallback? onGoogleMapsApiKeyError;
+  
+  /// Optional route animation configuration.
+  /// 
+  /// When provided, the widget will display an animated route with
+  /// a marker moving from start to end point along the specified path.
+  final TridentRouteAnimation? routeAnimation;
 
   /// Creates a [TridentTracker] widget.
   /// 
@@ -93,6 +100,7 @@ class TridentTracker extends StatefulWidget {
     this.locationMarker,
     this.onLocationPermissionDenied,
     this.onGoogleMapsApiKeyError,
+    this.routeAnimation,
   }) : assert(
          mapType != MapType.googleMaps || (googleMapsApiKey != null && googleMapsApiKey != ''),
          'Google Maps API key is required when mapType is MapType.googleMaps. '
@@ -103,7 +111,7 @@ class TridentTracker extends StatefulWidget {
   State<TridentTracker> createState() => _TridentTrackerState();
 }
 
-class _TridentTrackerState extends State<TridentTracker> {
+class _TridentTrackerState extends State<TridentTracker> with TickerProviderStateMixin {
   LatLng? _currentLocation;
   flutter_map.MapController? _mapController;
   late osm.MapController _osmController;
@@ -111,6 +119,8 @@ class _TridentTrackerState extends State<TridentTracker> {
   bool _isLoading = true;
   String? _errorMessage;
   Set<google_maps.Marker> _googleMarkers = {};
+  Set<google_maps.Polyline> _googlePolylines = {};
+  TridentRouteAnimationController? _routeAnimationController;
 
   @override
   void initState() {
@@ -123,11 +133,13 @@ class _TridentTrackerState extends State<TridentTracker> {
       ),
     );
     _initializeLocation();
+    _initializeRouteAnimation();
   }
 
   @override
   void dispose() {
     _osmController.dispose();
+    _routeAnimationController?.dispose();
     super.dispose();
   }
 
@@ -187,6 +199,45 @@ class _TridentTrackerState extends State<TridentTracker> {
         _errorMessage = _getErrorMessage(e);
         _isLoading = false;
       });
+    }
+  }
+  
+  void _initializeRouteAnimation() {
+    if (widget.routeAnimation != null) {
+      // Create a new route animation config with our custom callbacks
+      final customConfig = TridentRouteAnimation(
+        startPoint: widget.routeAnimation!.startPoint,
+        endPoint: widget.routeAnimation!.endPoint,
+        waypoints: widget.routeAnimation!.waypoints,
+        animatedMarker: widget.routeAnimation!.animatedMarker,
+        duration: widget.routeAnimation!.duration,
+        autoStart: widget.routeAnimation!.autoStart,
+        showPolyline: widget.routeAnimation!.showPolyline,
+        polylineColor: widget.routeAnimation!.polylineColor,
+        polylineWidth: widget.routeAnimation!.polylineWidth,
+        curve: widget.routeAnimation!.curve,
+        onRouteStart: widget.routeAnimation!.onRouteStart,
+        onRouteComplete: widget.routeAnimation!.onRouteComplete,
+        onProgress: widget.routeAnimation!.onProgress,
+        onPositionChanged: (position) {
+          // Update markers based on map type
+          if (widget.mapType == MapType.googleMaps) {
+            _updateGoogleMapsRouteMarker();
+          }
+          // Call the original callback if provided
+          widget.routeAnimation!.onPositionChanged?.call(position);
+        },
+      );
+      
+      _routeAnimationController = TridentRouteAnimationController(
+        config: customConfig,
+        vsync: this,
+      );
+      
+      // Add route polyline for Google Maps
+      if (widget.mapType == MapType.googleMaps && widget.routeAnimation!.showPolyline) {
+        _updateGoogleMapsPolyline();
+      }
     }
   }
 
@@ -384,14 +435,35 @@ class _TridentTrackerState extends State<TridentTracker> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.trident_tracker',
         ),
-        if (_currentLocation != null)
+        if (_currentLocation != null || _routeAnimationController != null)
           flutter_map.MarkerLayer(
             markers: [
-              flutter_map.Marker(
-                point: _currentLocation!,
-                width: widget.locationMarker?.size.width ?? 80.0,
-                height: widget.locationMarker?.size.height ?? 80.0,
-                child: TridentMarkerWidgets.buildMarkerWidget(widget.locationMarker),
+              // Current location marker
+              if (_currentLocation != null)
+                flutter_map.Marker(
+                  point: _currentLocation!,
+                  width: widget.locationMarker?.size.width ?? 80.0,
+                  height: widget.locationMarker?.size.height ?? 80.0,
+                  child: TridentMarkerWidgets.buildMarkerWidget(widget.locationMarker),
+                ),
+              // Route animation marker
+              if (_routeAnimationController != null)
+                flutter_map.Marker(
+                  point: _routeAnimationController!.getCurrentPosition(),
+                  width: widget.routeAnimation!.animatedMarker?.size.width ?? 80.0,
+                  height: widget.routeAnimation!.animatedMarker?.size.height ?? 80.0,
+                  child: TridentMarkerWidgets.buildMarkerWidget(widget.routeAnimation!.animatedMarker),
+                ),
+            ],
+          ),
+        // Route polyline
+        if (_routeAnimationController != null && widget.routeAnimation!.showPolyline)
+          flutter_map.PolylineLayer(
+            polylines: [
+              flutter_map.Polyline(
+                points: _routeAnimationController!.getRoutePoints(),
+                strokeWidth: widget.routeAnimation!.polylineWidth,
+                color: widget.routeAnimation!.polylineColor,
               ),
             ],
           ),
@@ -442,6 +514,7 @@ class _TridentTrackerState extends State<TridentTracker> {
         zoom: widget.initialZoom ?? 15.0,
       ),
       markers: _googleMarkers,
+      polylines: _googlePolylines,
       myLocationEnabled: widget.showCurrentLocation,
       myLocationButtonEnabled: widget.showCurrentLocation,
       mapType: google_maps.MapType.normal,
@@ -529,5 +602,122 @@ class _TridentTrackerState extends State<TridentTracker> {
         ),
       ),
     );
+  }
+  
+  void _setupGoogleMapsRouteAnimation() {
+    // This method will be implemented differently since we can't access private _animation
+    // Instead, we'll update the route marker in the position change callback
+    // This is handled in the route animation configuration
+  }
+  
+  void _updateGoogleMapsRouteMarker() {
+    if (_routeAnimationController == null || !mounted) return;
+    
+    final currentPosition = _routeAnimationController!.getCurrentPosition();
+    final marker = widget.routeAnimation!.animatedMarker;
+    
+    _createGoogleMapsRouteMarkerIcon().then((icon) {
+      if (!mounted) return;
+      
+      setState(() {
+        // Remove existing route marker and add new one
+        _googleMarkers.removeWhere((m) => m.markerId.value == 'route_marker');
+        _googleMarkers.add(
+          google_maps.Marker(
+            markerId: const google_maps.MarkerId('route_marker'),
+            position: google_maps.LatLng(currentPosition.latitude, currentPosition.longitude),
+            infoWindow: google_maps.InfoWindow(
+              title: marker?.title ?? 'Route Progress',
+              snippet: marker?.description,
+            ),
+            icon: icon,
+          ),
+        );
+      });
+    });
+  }
+  
+  void _updateGoogleMapsPolyline() {
+    if (_routeAnimationController == null || !mounted) return;
+    
+    final routePoints = _routeAnimationController!.getRoutePoints();
+    
+    setState(() {
+      _googlePolylines = {
+        google_maps.Polyline(
+          polylineId: const google_maps.PolylineId('route'),
+          points: routePoints.map((point) => 
+            google_maps.LatLng(point.latitude, point.longitude)).toList(),
+          color: widget.routeAnimation!.polylineColor,
+          width: widget.routeAnimation!.polylineWidth.round(),
+        ),
+      };
+    });
+  }
+  
+  Future<google_maps.BitmapDescriptor> _createGoogleMapsRouteMarkerIcon() async {
+    final marker = widget.routeAnimation!.animatedMarker;
+    
+    if (marker == null) {
+      return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+        google_maps.BitmapDescriptor.hueBlue,
+      );
+    }
+    
+    // Reuse the existing marker creation logic but for route marker
+    switch (marker.type) {
+      case TridentLocationMarkerType.asset:
+        try {
+          return await google_maps.BitmapDescriptor.asset(
+            const ImageConfiguration(size: Size(48, 48)),
+            marker.assetPath!,
+          );
+        } catch (e) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
+        
+      case TridentLocationMarkerType.widget:
+        return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+          google_maps.BitmapDescriptor.hueBlue,
+        );
+        
+      case TridentLocationMarkerType.defaultIcon:
+        final color = marker.color ?? Colors.blue;
+        if (color == Colors.blue) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        } else if (color == Colors.red) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueRed,
+          );
+        } else if (color == Colors.green) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueGreen,
+          );
+        } else {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
+        
+      case TridentLocationMarkerType.pulsing:
+        final color = marker.color ?? Colors.blue;
+        if (color == Colors.blue) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        } else if (color == Colors.red) {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueRed,
+          );
+        } else {
+          return google_maps.BitmapDescriptor.defaultMarkerWithHue(
+            google_maps.BitmapDescriptor.hueBlue,
+          );
+        }
+    }
   }
 }

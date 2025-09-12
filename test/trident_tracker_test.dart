@@ -188,4 +188,159 @@ void main() {
       expect(marker.size, const Size(45, 45));
     });
   });
+
+  group('TridentRouteAnimation Tests', () {
+    test('TridentRouteAnimation constructor accepts all parameters', () {
+      const startPoint = LatLng(37.7749, -122.4194);
+      const endPoint = LatLng(37.7849, -122.4094);
+      const waypoints = [LatLng(37.7799, -122.4144)];
+      const duration = Duration(seconds: 15);
+      
+      final routeAnimation = TridentRouteAnimation(
+        startPoint: startPoint,
+        endPoint: endPoint,
+        waypoints: waypoints,
+        duration: duration,
+        autoStart: true,
+        showPolyline: true,
+        polylineColor: Colors.blue,
+        polylineWidth: 3.0,
+      );
+
+      expect(routeAnimation.startPoint, startPoint);
+      expect(routeAnimation.endPoint, endPoint);
+      expect(routeAnimation.waypoints, waypoints);
+      expect(routeAnimation.duration, duration);
+      expect(routeAnimation.autoStart, true);
+      expect(routeAnimation.showPolyline, true);
+      expect(routeAnimation.polylineColor, Colors.blue);
+      expect(routeAnimation.polylineWidth, 3.0);
+    });
+
+    test('TridentRouteAnimation.vehicle creates correct configuration', () {
+      const startPoint = LatLng(37.7749, -122.4194);
+      const endPoint = LatLng(37.7849, -122.4094);
+      
+      final routeAnimation = TridentRouteAnimation.vehicle(
+        startPoint: startPoint,
+        endPoint: endPoint,
+        duration: const Duration(seconds: 10),
+      );
+
+      expect(routeAnimation.startPoint, startPoint);
+      expect(routeAnimation.endPoint, endPoint);
+      expect(routeAnimation.duration, const Duration(seconds: 10));
+      expect(routeAnimation.autoStart, true);
+      expect(routeAnimation.showPolyline, true);
+      expect(routeAnimation.polylineColor, Colors.blue);
+      expect(routeAnimation.animatedMarker, isNotNull);
+    });
+
+    test('TridentRouteAnimation.delivery creates correct configuration', () {
+      const startPoint = LatLng(37.7749, -122.4194);
+      const endPoint = LatLng(37.7849, -122.4094);
+      
+      final routeAnimation = TridentRouteAnimation.delivery(
+        startPoint: startPoint,
+        endPoint: endPoint,
+      );
+
+      expect(routeAnimation.startPoint, startPoint);
+      expect(routeAnimation.endPoint, endPoint);
+      expect(routeAnimation.duration, const Duration(seconds: 12));
+      expect(routeAnimation.autoStart, true);
+      expect(routeAnimation.showPolyline, true);
+      expect(routeAnimation.polylineColor, Colors.green);
+      expect(routeAnimation.polylineWidth, 4.0);
+      expect(routeAnimation.animatedMarker, isNotNull);
+    });
+
+    test('TridentRouteAnimation.walking creates correct configuration', () {
+      const startPoint = LatLng(37.7749, -122.4194);
+      const endPoint = LatLng(37.7849, -122.4094);
+      
+      final routeAnimation = TridentRouteAnimation.walking(
+        startPoint: startPoint,
+        endPoint: endPoint,
+      );
+
+      expect(routeAnimation.startPoint, startPoint);
+      expect(routeAnimation.endPoint, endPoint);
+      expect(routeAnimation.duration, const Duration(seconds: 20));
+      expect(routeAnimation.autoStart, true);
+      expect(routeAnimation.showPolyline, true);
+      expect(routeAnimation.polylineColor, Colors.orange);
+      expect(routeAnimation.polylineWidth, 2.0);
+      expect(routeAnimation.curve, TridentAnimationCurve.linear);
+      expect(routeAnimation.animatedMarker, isNotNull);
+      expect(routeAnimation.animatedMarker!.type, TridentLocationMarkerType.pulsing);
+    });
+
+    test('TridentAnimationCurve enum has correct values', () {
+      expect(TridentAnimationCurve.values.length, 6);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.linear), true);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.easeIn), true);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.easeOut), true);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.easeInOut), true);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.bounceIn), true);
+      expect(TridentAnimationCurve.values.contains(TridentAnimationCurve.bounceOut), true);
+    });
+  });
+
+  group('TridentTracker with Route Animation Tests', () {
+    test('TridentTracker accepts routeAnimation parameter', () {
+      final routeAnimation = TridentRouteAnimation.vehicle(
+        startPoint: const LatLng(37.7749, -122.4194),
+        endPoint: const LatLng(37.7849, -122.4094),
+      );
+
+      final widget = TridentTracker(
+        mapType: MapType.flutterMap,
+        routeAnimation: routeAnimation,
+      );
+
+      expect(widget.routeAnimation, isNotNull);
+      expect(widget.routeAnimation!.startPoint, const LatLng(37.7749, -122.4194));
+      expect(widget.routeAnimation!.endPoint, const LatLng(37.7849, -122.4094));
+      expect(widget.routeAnimation!.autoStart, true);
+    });
+
+    test('TridentTracker works with route animation and location marker together', () {
+      final locationMarker = TridentLocationMarker.defaultBlue();
+      final routeAnimation = TridentRouteAnimation.delivery(
+        startPoint: const LatLng(40.7589, -73.9851),
+        endPoint: const LatLng(40.7489, -73.9851),
+      );
+
+      final widget = TridentTracker(
+        mapType: MapType.flutterMap,
+        locationMarker: locationMarker,
+        routeAnimation: routeAnimation,
+        showCurrentLocation: true,
+      );
+
+      expect(widget.locationMarker, isNotNull);
+      expect(widget.routeAnimation, isNotNull);
+      expect(widget.showCurrentLocation, true);
+      expect(widget.routeAnimation!.polylineColor, Colors.green);
+    });
+
+    test('TridentTracker route animation works with Google Maps', () {
+      final routeAnimation = TridentRouteAnimation.walking(
+        startPoint: const LatLng(37.7749, -122.4194),
+        endPoint: const LatLng(37.7849, -122.4094),
+      );
+
+      final widget = TridentTracker(
+        mapType: MapType.googleMaps,
+        googleMapsApiKey: "test-api-key",
+        routeAnimation: routeAnimation,
+      );
+
+      expect(widget.mapType, MapType.googleMaps);
+      expect(widget.googleMapsApiKey, "test-api-key");
+      expect(widget.routeAnimation, isNotNull);
+      expect(widget.routeAnimation!.curve, TridentAnimationCurve.linear);
+    });
+  });
 }
