@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'trident_location_marker.dart';
+import 'services/route_service.dart';
 
 /// Defines how a route should be animated on the map.
 /// 
@@ -22,6 +23,8 @@ class TridentRouteAnimation {
   final VoidCallback? onRouteComplete;
   final ValueChanged<double>? onProgress;
   final ValueChanged<LatLng>? onPositionChanged;
+  final IRouteService? routeService;
+  final bool useRealRoads;
 
   const TridentRouteAnimation({
     required this.startPoint,
@@ -38,6 +41,8 @@ class TridentRouteAnimation {
     this.onRouteComplete,
     this.onProgress,
     this.onPositionChanged,
+    this.routeService,
+    this.useRealRoads = true,
   });
 
   /// Creates a route animation for vehicle tracking.
@@ -48,6 +53,8 @@ class TridentRouteAnimation {
     String? vehicleAsset,
     Duration duration = const Duration(seconds: 15),
     VoidCallback? onComplete,
+    IRouteService? routeService,
+    bool useRealRoads = true,
   }) {
     return TridentRouteAnimation(
       startPoint: startPoint,
@@ -70,6 +77,8 @@ class TridentRouteAnimation {
       polylineColor: Colors.blue,
       autoStart: true,
       onRouteComplete: onComplete,
+      routeService: routeService ?? RouteServiceFactory.create(),
+      useRealRoads: useRealRoads,
     );
   }
 
@@ -80,6 +89,8 @@ class TridentRouteAnimation {
     List<LatLng>? waypoints,
     Duration duration = const Duration(seconds: 12),
     VoidCallback? onComplete,
+    IRouteService? routeService,
+    bool useRealRoads = true,
   }) {
     return TridentRouteAnimation(
       startPoint: startPoint,
@@ -107,6 +118,8 @@ class TridentRouteAnimation {
       polylineWidth: 4.0,
       autoStart: true,
       onRouteComplete: onComplete,
+      routeService: routeService ?? RouteServiceFactory.create(),
+      useRealRoads: useRealRoads,
     );
   }
 
@@ -117,6 +130,8 @@ class TridentRouteAnimation {
     List<LatLng>? waypoints,
     Duration duration = const Duration(seconds: 20),
     VoidCallback? onComplete,
+    IRouteService? routeService,
+    bool useRealRoads = true,
   }) {
     return TridentRouteAnimation(
       startPoint: startPoint,
@@ -133,6 +148,8 @@ class TridentRouteAnimation {
       curve: TridentAnimationCurve.linear,
       autoStart: true,
       onRouteComplete: onComplete,
+      routeService: routeService ?? RouteServiceFactory.create(),
+      useRealRoads: useRealRoads,
     );
   }
 }
@@ -195,8 +212,12 @@ class TridentRouteAnimationController {
   }
 
   void _setupAnimation() {
-    // Generate route points
-    _routePoints = _generateRoutePoints();
+    // Generate route points (async if using real roads)
+    if (config.useRealRoads && config.routeService != null) {
+      _generateRealRoutePoints();
+    } else {
+      _routePoints = _generateSimpleRoutePoints();
+    }
 
     _animation.addListener(() {
       final position = getCurrentPosition();
@@ -218,7 +239,42 @@ class TridentRouteAnimationController {
     }
   }
 
-  List<LatLng> _generateRoutePoints() {
+  Future<void> _generateRealRoutePoints() async {
+    try {
+      final profile = _getRouteProfile();
+      final routeResult = await config.routeService!.calculateRoute(
+        start: config.startPoint,
+        end: config.endPoint,
+        waypoints: config.waypoints,
+        profile: profile,
+      );
+      
+      _routePoints = routeResult.coordinates;
+    } catch (e) {
+      // Fallback to simple route generation if API fails
+      debugPrint('Route calculation failed, using fallback: $e');
+      _routePoints = _generateSimpleRoutePoints();
+    }
+  }
+
+  RouteProfile _getRouteProfile() {
+    // Determine route profile based on marker type or animation type
+    if (config.animatedMarker != null) {
+      // Check if it's a vehicle marker (has car icon)
+      return RouteProfile.driving;
+    }
+    
+    // Default based on polyline color heuristic
+    if (config.polylineColor == Colors.green) {
+      return RouteProfile.delivery;
+    } else if (config.polylineColor == Colors.orange) {
+      return RouteProfile.walking;
+    } else {
+      return RouteProfile.driving;
+    }
+  }
+
+  List<LatLng> _generateSimpleRoutePoints() {
     final points = <LatLng>[];
     
     // Add start point
