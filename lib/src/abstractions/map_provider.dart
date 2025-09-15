@@ -5,6 +5,7 @@ import 'package:trident_tracker/src/providers/google_map_provider.dart';
 import 'package:trident_tracker/src/providers/osm_map_provider.dart';
 import '../trident_location_marker.dart';
 import '../trident_route_animation.dart';
+import '../map_type.dart';
 
 /// Abstract interface for map providers following Open/Closed Principle
 abstract class MapProvider {
@@ -56,9 +57,3 @@ abstract class MapProviderFactory {
   }
 }
 
-/// Map types enum
-enum MapType {
-  flutterMap,
-  osmPlugin,
-  googleMaps,
-}

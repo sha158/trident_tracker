@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:trident_tracker/src/trident_tracker_refactored.dart';
-import 'package:trident_tracker/src/features/traffic_layer_feature.dart';
 import 'package:trident_tracker/trident_tracker.dart';
 
 /// Example demonstrating SOLID principles and scalability

@@ -216,6 +216,8 @@ class _TridentTrackerState extends State<TridentTracker> with TickerProviderStat
         polylineColor: widget.routeAnimation!.polylineColor,
         polylineWidth: widget.routeAnimation!.polylineWidth,
         curve: widget.routeAnimation!.curve,
+        useRealRoads: widget.routeAnimation!.useRealRoads, // Fix: Copy useRealRoads
+        routeService: widget.routeAnimation!.routeService, // Fix: Copy routeService
         onRouteStart: widget.routeAnimation!.onRouteStart,
         onRouteComplete: widget.routeAnimation!.onRouteComplete,
         onProgress: widget.routeAnimation!.onProgress,

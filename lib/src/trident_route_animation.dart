@@ -212,18 +212,26 @@ class TridentRouteAnimationController {
   }
 
   void _setupAnimation() {
+    _setupAnimationListeners();
+    
     // Generate route points (async if using real roads)
     if (config.useRealRoads && config.routeService != null) {
+      print('🔄 Setting up REAL ROADS animation...');
       _generateRealRoutePoints().then((_) {
-        // Start animation after route is loaded
-        _setupAnimationListeners();
+        print('✅ Real roads route loaded, starting animation');
+        if (config.autoStart) {
+          start();
+        }
+      }).catchError((error) {
+        print('❌ Real roads failed: $error, using fallback');
+        _routePoints = _generateSimpleRoutePoints();
         if (config.autoStart) {
           start();
         }
       });
     } else {
+      print('⚠️ Using simple route points (useRealRoads: ${config.useRealRoads}, routeService: ${config.routeService != null})');
       _routePoints = _generateSimpleRoutePoints();
-      _setupAnimationListeners();
       if (config.autoStart) {
         start();
       }
