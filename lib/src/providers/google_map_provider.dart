@@ -40,7 +40,7 @@ class GoogleMapProvider implements MapProvider {
         _mapController = controller;
         
         // Initialize markers and polylines if needed
-        if (currentLocation != null) {
+        if (currentLocation != null && locationMarker != null) {
           _updateLocationMarker(currentLocation, locationMarker);
         }
         
@@ -88,20 +88,25 @@ class GoogleMapProvider implements MapProvider {
   }
   
   void _updateLocationMarker(LatLng location, TridentLocationMarker? marker) {
-    _createMarkerIcon(marker).then((icon) {
-      _markers.removeWhere((m) => m.markerId.value == 'current_location');
-      _markers.add(
-        google_maps.Marker(
-          markerId: const google_maps.MarkerId('current_location'),
-          position: google_maps.LatLng(location.latitude, location.longitude),
-          infoWindow: google_maps.InfoWindow(
-            title: marker?.title ?? 'Your Location',
-            snippet: marker?.description,
+    // Remove any existing location marker
+    _markers.removeWhere((m) => m.markerId.value == 'current_location');
+
+    // Only add marker if explicitly provided by user
+    if (marker != null) {
+      _createMarkerIcon(marker).then((icon) {
+        _markers.add(
+          google_maps.Marker(
+            markerId: const google_maps.MarkerId('current_location'),
+            position: google_maps.LatLng(location.latitude, location.longitude),
+            infoWindow: google_maps.InfoWindow(
+              title: marker.title ?? 'Your Location',
+              snippet: marker.description,
+            ),
+            icon: icon,
           ),
-          icon: icon,
-        ),
-      );
-    });
+        );
+      });
+    }
   }
   
   void _updateRouteMarker(LatLng position) {
