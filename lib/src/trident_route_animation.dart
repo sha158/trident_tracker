@@ -214,11 +214,23 @@ class TridentRouteAnimationController {
   void _setupAnimation() {
     // Generate route points (async if using real roads)
     if (config.useRealRoads && config.routeService != null) {
-      _generateRealRoutePoints();
+      _generateRealRoutePoints().then((_) {
+        // Start animation after route is loaded
+        _setupAnimationListeners();
+        if (config.autoStart) {
+          start();
+        }
+      });
     } else {
       _routePoints = _generateSimpleRoutePoints();
+      _setupAnimationListeners();
+      if (config.autoStart) {
+        start();
+      }
     }
+  }
 
+  void _setupAnimationListeners() {
     _animation.addListener(() {
       final position = getCurrentPosition();
       config.onProgress?.call(_animation.value);
@@ -233,14 +245,11 @@ class TridentRouteAnimationController {
         config.onRouteComplete?.call();
       }
     });
-
-    if (config.autoStart) {
-      start();
-    }
   }
 
   Future<void> _generateRealRoutePoints() async {
     try {
+      print('🛣️ Calculating real road route from ${config.startPoint} to ${config.endPoint}');
       final profile = _getRouteProfile();
       final routeResult = await config.routeService!.calculateRoute(
         start: config.startPoint,
@@ -250,26 +259,30 @@ class TridentRouteAnimationController {
       );
       
       _routePoints = routeResult.coordinates;
+      print('✅ Real road route calculated with ${_routePoints.length} points');
+      print('📏 Distance: ${(routeResult.distance / 1000).toStringAsFixed(2)} km');
+      print('⏱️ Duration: ${(routeResult.duration / 60).toStringAsFixed(1)} minutes');
     } catch (e) {
       // Fallback to simple route generation if API fails
-      debugPrint('Route calculation failed, using fallback: $e');
+      print('❌ Route calculation failed, using fallback: $e');
       _routePoints = _generateSimpleRoutePoints();
+      print('⚠️ Using ${_routePoints.length} interpolated points as fallback');
     }
   }
 
   RouteProfile _getRouteProfile() {
-    // Determine route profile based on marker type or animation type
-    if (config.animatedMarker != null) {
-      // Check if it's a vehicle marker (has car icon)
-      return RouteProfile.driving;
-    }
-    
-    // Default based on polyline color heuristic
+    // Determine route profile based on marker type and polyline color
     if (config.polylineColor == Colors.green) {
+      print('🏍️ Using delivery profile (green polyline)');
       return RouteProfile.delivery;
     } else if (config.polylineColor == Colors.orange) {
+      print('🚶 Using walking profile (orange polyline)');
       return RouteProfile.walking;
+    } else if (config.polylineColor == Colors.blue) {
+      print('🚗 Using driving profile (blue polyline)');
+      return RouteProfile.driving;
     } else {
+      print('🚗 Using default driving profile');
       return RouteProfile.driving;
     }
   }

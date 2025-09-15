@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:flutter/foundation.dart';
 
 /// Service for calculating routes along actual roads
 abstract class IRouteService {
@@ -170,13 +171,29 @@ class OSRMRouteService implements IRouteService {
 
   double _calculateTotalDistance(List<LatLng> points) {
     double totalDistance = 0.0;
-    const distance = Distance();
     
     for (int i = 0; i < points.length - 1; i++) {
-      totalDistance += distance.as(LengthUnit.Meter, points[i], points[i + 1]);
+      // Use Haversine formula to calculate distance between two points
+      totalDistance += _calculateDistance(points[i], points[i + 1]);
     }
     
     return totalDistance;
+  }
+
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    const double earthRadius = 6371000; // Earth's radius in meters
+    
+    final double lat1Rad = point1.latitude * pi / 180;
+    final double lat2Rad = point2.latitude * pi / 180;
+    final double deltaLatRad = (point2.latitude - point1.latitude) * pi / 180;
+    final double deltaLngRad = (point2.longitude - point1.longitude) * pi / 180;
+
+    final double a = sin(deltaLatRad / 2) * sin(deltaLatRad / 2) +
+        cos(lat1Rad) * cos(lat2Rad) *
+        sin(deltaLngRad / 2) * sin(deltaLngRad / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
   }
 
   int _estimateDuration(double distanceMeters, RouteProfile profile) {
