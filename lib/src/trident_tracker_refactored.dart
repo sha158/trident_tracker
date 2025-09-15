@@ -8,6 +8,7 @@ import 'providers/flutter_map_provider.dart';
 import 'providers/google_map_provider.dart';
 import 'providers/osm_map_provider.dart';
 import 'location_service.dart';
+import 'map_type.dart';
 import 'trident_location_marker.dart';
 import 'trident_route_animation.dart';
 

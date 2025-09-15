@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:trident_tracker/src/trident_tracker_refactored.dart';
-import 'package:trident_tracker/src/features/traffic_layer_feature.dart';
 import 'package:trident_tracker/trident_tracker.dart';
 
 /// Example demonstrating SOLID principles and scalability
@@ -193,7 +191,7 @@ class RefactoredMapExample extends StatelessWidget {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: TridentTrackerRefactored(
+      body: TridentTracker(
         mapType: MapType.flutterMap,
         showCurrentLocation: true,
         routeAnimation: TridentRouteAnimation.vehicle(
@@ -234,16 +232,42 @@ class TrafficFeatureExample extends StatelessWidget {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
-      body: TridentTrackerWithTraffic(
-        mapType: MapType.googleMaps,
-        googleMapsApiKey: "demo-key", // Would use real key in production
-        initialCenter: const LatLng(37.7749, -122.4194),
-        trafficConfig: const TrafficLayerConfig(
-          enabled: true,
-          trafficColor: Colors.red,
-          opacity: 0.8,
-          dataSource: TrafficDataSource.realTime,
-        ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.green.shade50,
+            child: Row(
+              children: [
+                const Icon(Icons.info, color: Colors.green),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'This demonstrates how SOLID principles allow easy extension of features. '
+                    'Traffic layer would be implemented as a separate feature module.',
+                    style: TextStyle(color: Colors.green.shade800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TridentTracker(
+              mapType: MapType.googleMaps,
+              googleMapsApiKey: "demo-key",
+              initialCenter: const LatLng(37.7749, -122.4194),
+              showCurrentLocation: false,
+              onGoogleMapsApiKeyError: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Google Maps API key is required for this demo.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

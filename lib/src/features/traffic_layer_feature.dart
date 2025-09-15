@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../abstractions/map_provider.dart';
+import '../map_type.dart';
 
 /// Example of how to extend the system with new features (Open/Closed Principle)
 /// This demonstrates scalability without modifying existing code
@@ -177,8 +178,8 @@ class GoogleMapProviderWithTraffic extends TrafficEnabledMapProvider {
     return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
-          color: currentTrafficConfig!.trafficColor.withOpacity(
-            currentTrafficConfig!.opacity * 0.3,
+          color: currentTrafficConfig!.trafficColor.withValues(
+            alpha: currentTrafficConfig!.opacity * 0.3,
           ),
         ),
         child: const Center(
@@ -238,6 +239,7 @@ class ExtendedMapProviderFactory extends MapProviderFactory {
       case MapType.osmPlugin:
         throw UnsupportedError('Traffic layer not supported for $mapType');
     }
+    throw UnsupportedError('Unknown map type: $mapType');
   }
 }
 
