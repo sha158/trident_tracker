@@ -1,1 +1,94 @@
-i want to create a package where on user arguement the maps are going to open , first map is flutter_map and second map is flutter_osm_plugin map , should show the current location , also mention what is required for configuration to make the app work
+C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:227:5: Error: Type 'MapType' not found.
+ 
+    MapType mapType, {
+ 
+    ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:246:9: Error: Type 'MapType' not found.
+ 
+  final MapType mapType;
+ 
+        ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:227:5: Error: 'MapType' isn't a type.
+ 
+    MapType mapType, {
+ 
+    ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:231:12: Error: Undefined name 'MapType'.
+ 
+      case MapType.googleMaps:
+ 
+           ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:237:12: Error: Undefined name 'MapType'.
+ 
+      case MapType.flutterMap:
+ 
+           ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:238:12: Error: Undefined name 'MapType'.
+ 
+      case MapType.osmPlugin:
+ 
+           ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:226:36: Error: A non-null value must be returned since the return type 'TrafficEnabledMapProvider' doesn't allow null.
+ 
+- 'TrafficEnabledMapProvider' is from 'package:trident_tracker/src/features/traffic_layer_feature.dart' ('/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart').
+ 
+  static TrafficEnabledMapProvider createWithTraffic(
+ 
+                                   ^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/features/traffic_layer_feature.dart:246:9: Error: 'MapType' isn't a type.
+ 
+  final MapType mapType;
+ 
+        ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/trident_tracker_refactored.dart:16:9: Error: Type 'MapType' not found.
+ 
+  final MapType mapType;
+ 
+        ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/trident_tracker_refactored.dart:38:21: Error: Undefined name 'MapType'.
+ 
+         mapType != MapType.googleMaps ||
+ 
+                    ^^^^^^^
+ 
+/C:/Users/ADMIN/AppData/Local/Pub/Cache/git/trident_tracker-06afe22075710d6063d4b49c204b56059f86d459/lib/src/trident_tracker_refactored.dart:16:9: Error: 'MapType' isn't a type.
+ 
+  final MapType mapType;
+ 
+        ^^^^^^^
+ 
+Target kernel_snapshot_program failed: Exception
+ 
+2
+ 
+FAILURE: Build failed with an exception.
+ 
+ 
+* What went wrong:
+ 
+Execution failed for task ':app:compileFlutterBuildDebug'.
+ 
+> Process 'command 'C:\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+ 
+ 
+* Try:
+ 
+> Run with --stacktrace option to get the stack trace.
+ 
+> Run with --info or --debug option to get more log output.
+ 
+> Get more help at https://help.gradle.org.
+ 
+ 
+BUILD FAILED in 6s
+Gradle | Search for Help with Gradle Build Tool
+ 

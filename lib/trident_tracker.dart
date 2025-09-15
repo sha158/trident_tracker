@@ -32,8 +32,10 @@
 library;
 
 export 'src/trident_tracker_widget.dart';
+export 'src/trident_tracker_refactored.dart';
 export 'src/map_type.dart';
 export 'src/location_service.dart';
 export 'src/trident_location_marker.dart';
 export 'src/trident_route_animation.dart';
 export 'src/services/route_service.dart';
+export 'src/features/traffic_layer_feature.dart';
